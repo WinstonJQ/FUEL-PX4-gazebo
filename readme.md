@@ -5,7 +5,7 @@
 ## 依赖
 
 - **ROS Noetic**
-- **PX4 Firmware** (SITL 仿真，必须安装)
+- **PX4** (SITL 仿真，必须安装)
 - **MAVROS**
 - **Gazebo 11**
 
@@ -46,7 +46,7 @@ source devel/setup.bash
 - px4ctrl 控制器
 - Exploration 规划器
 - RViz 可视化
-- **监视器（ftxui_ros）**
+- 监视器
 - 解锁控制终端
 
 然后进入**手动控制流程**（模拟实际飞行器的操作流程）：
