@@ -1,0 +1,11 @@
+NAME : single.802.tour
+COMMENT : Length = 802
+COMMENT : Found by LKH [Keld Helsgaun] Fri Mar 13 18:22:14 2026
+TYPE : TOUR
+DIMENSION : 3
+TOUR_SECTION
+1
+2
+3
+-1
+EOF
