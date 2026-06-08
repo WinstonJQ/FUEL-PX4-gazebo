@@ -151,28 +151,13 @@ auto_takeoff_land:
     no_RC: true              # 无遥控模式
 ```
 
-### 5. 地图模块坐标系修正（隐蔽改动，务必留意）
+### 5. 地图模块坐标系修正（隐蔽改动，容易忘记）
 
-> ⚠️ 这是所有改动中唯一一处**散落在地图源码里**的修改，最容易被遗忘。
+文件：`src/fuel_planner/plan_env/src/map_ros.cpp` 的 `depthPoseCallback`，新增了一行 `camera_q_ = camera_q_ * q_diff;`。
 
-文件：`src/fuel_planner/plan_env/src/map_ros.cpp` 的 `depthPoseCallback`：
+**为什么要改**：FUEL 把深度图反投影出来的点是在相机光学坐标系里的，所以 `camera_q_` 必须是"光学系到世界系"的旋转。原版 FUEL 发布的 `sensor_pose` 本来就是相机光学系的位姿，可以直接用；但本版本改成了 Gazebo 发布的机体真值位姿（机体系到世界系），中间少了"机体到相机光学系"这一段固定旋转，所以要右乘 `q_diff = (0.5,-0.5,0.5,-0.5)` 把它补上。如果漏掉这一行，建出来的地图会整体转 90 度。
 
-```cpp
-Eigen::Quaterniond q_sensor(0.5, -0.5, 0.5, -0.5); // 机体系 → 相机光学系 的固定旋转
-Eigen::Quaterniond q_diff = q_sensor * q_vision.inverse();
-camera_q_ = Eigen::Quaterniond(pose->pose.orientation.w, ... );  // = R_{世界←机体}
-camera_q_ = camera_q_ * q_diff;                                   // 右乘后 = R_{世界←光学}  ← 新增
-```
-
-**原理（简洁版）**：
-
-- FUEL 把深度图反投影出的点是在**相机光学系 C**（x右、y下、z前）里的，再用 `camera_q_` 转到世界系，所以 `camera_q_` 必须等于 `R_{世界←光学}`。
-- **原始 FUEL** 的 `sensor_pose` 发布的就是相机光学系位姿，`camera_q_ = R_{世界←光学}`，无需处理。
-- **本版本** 的 `sensor_pose` 改接 `scripts/get_local_pose.py` 发布的 Gazebo **机体真值**（`vision_pose/pose`），它是 `R_{世界←机体}`，比正确值少了"机体→光学"那一段固定旋转。
-- 因此右乘 `q_diff = R_{机体←光学}`（即 `(0.5,-0.5,0.5,-0.5)`）补回来：`R_{世界←机体} · R_{机体←光学} = R_{世界←光学}`。
-- **漏掉这一行，建出的地图会整体扭转 ~90°**（正前方的障碍会被建到头顶）。
-
-**迁移到实机时**：若改用激光雷达点云通路（`cloudPoseCallback` + FAST-LIO 已配准到世界系的 `/cloud_registered`），点云本身已在世界系、不经过 `camera_q_` 旋转，**这处修正自然失效、无需保留**；但若仍走深度图通路或喂未配准的原始点云，则必须按真实传感器外参重算此旋转。
+**迁移到实机时**：如果改用激光雷达，并且输入的是 FAST-LIO 已经转换到世界系的点云（`/cloud_registered`），这些点不再经过 `camera_q_` 做旋转，这处修正就可以去掉。
 
 ## 新增组件
 
